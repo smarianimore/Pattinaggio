@@ -6,28 +6,29 @@ import json
 
 import pandas as pd
 import math
+from decimal import Decimal, ROUND_HALF_UP
 
 pd.set_option('display.max_columns', None)
 
-###############################
-# FOGLIO DATI E NUMERO ATLETE #
-###############################
+##############################################
+# CONFIGURAZIONE FOGLIO DATI E NUMERO ATLETE #
+##############################################
 
 excel_file_path = "/mnt/c/Users/stefa/OneDrive/Documents/Pattinaggio-Lugo-20240303.xlsx"
-sheet_name = "promo B femminile"
+sheet_name = "test parimeriti"  # "promo B femminile"
 header_row_idx = 0  # which row contains the header
 data_columns = "A:N"
-header_score_1 = "DIFFICOLTA"
-header_score_2 = "STILE"
+header_score_tech = "DIFFICOLTA"
+header_score_art = "STILE"
 entrance_order = "INGRESSO"
 n_skaters = 11
 decimal_separator = ','
 
 n_judges = 3
 if n_judges == 3:
-    majority = 1.5
+    majority_threshold = 1.5
 elif n_judges == 5:
-    majority = 2.5
+    majority_threshold = 2.5
 else:
     raise ValueError("Number of judges admissible values: 3, 5")
 
@@ -42,24 +43,28 @@ if __name__ == '__main__':
 
     print(df.head(n_skaters))
 
-    #################################
-    # 1-2) CALCOLO MATRICE VITTORIE #
-    #################################
+    #########################################
+    # 1-2) CALCOLO MATRICE VITTORIE, CASO B #
+    #########################################
 
     victories_matrix = {}  # dict with {skater: {competitor: victories}}
-    for reference in df.itertuples():
-        victories_matrix[int(df.loc[reference.Index, entrance_order])] = {}
-        print(f"{df.loc[reference.Index, entrance_order]} vs:")
-        for competitor in df.itertuples():
+    print("==========> Victories matrix:")
+    for skater_ref in df.itertuples():
+        victories_matrix[int(df.loc[skater_ref.Index, entrance_order])] = {}
+        print(f"{df.loc[skater_ref.Index, entrance_order]} vs:")
+        for skater_vs in df.itertuples():
             victories = 0
-            if df.loc[reference.Index, entrance_order] != df.loc[competitor.Index, entrance_order]:  # NOT comparing skater with herself
+            if df.loc[skater_ref.Index, entrance_order] != df.loc[skater_vs.Index, entrance_order]:  # NOT comparing skater with herself
                 for idx in range(1, n_judges + 1):
-                    if math.isclose(df.loc[reference.Index, f'TOTALE {idx}'], df.loc[competitor.Index, f'TOTALE {idx}']):
-                        victories += 0.5
-                    elif df.loc[reference.Index, f'TOTALE {idx}'] > df.loc[competitor.Index, f'TOTALE {idx}']:
+                    if math.isclose(df.loc[skater_ref.Index, f'TOTALE {idx}'], df.loc[skater_vs.Index, f'TOTALE {idx}']):
+                        if math.isclose(df.loc[skater_ref.Index, f'{header_score_art} {idx}'], df.loc[skater_vs.Index, f'{header_score_art} {idx}']):
+                            victories += 0.5
+                        elif df.loc[skater_ref.Index, f'{header_score_art} {idx}'] > df.loc[skater_vs.Index, f'{header_score_art} {idx}']:
+                            victories += 1
+                    elif df.loc[skater_ref.Index, f'TOTALE {idx}'] > df.loc[skater_vs.Index, f'TOTALE {idx}']:
                         victories += 1
-                victories_matrix[int(df.loc[reference.Index, entrance_order])][int(df.loc[competitor.Index, entrance_order])] = victories
-                print(f"\t{df.loc[competitor.Index, entrance_order]}: {victories}", end="")
+                victories_matrix[int(df.loc[skater_ref.Index, entrance_order])][int(df.loc[skater_vs.Index, entrance_order])] = victories
+                print(f"\t{df.loc[skater_vs.Index, entrance_order]}: {victories}", end="")
         print()
     #print(json.dumps(victories_matrix, indent=4))
 
@@ -67,112 +72,67 @@ if __name__ == '__main__':
     # 3) CALCOLO VITTORIE DI MAGGIORANZA #
     ######################################
 
-    majorities = {}  # dict with {skater: majority score}
-    for ref in victories_matrix:
-        maj = 0
-        for vs in victories_matrix[ref]:
-            if math.isclose(victories_matrix[ref][vs], majority):
-                maj += 0.5
-            elif victories_matrix[ref][vs] > majority:
-                maj += 1
-        majorities[ref] = maj
-    print(f"{majorities=}")
+    majorities_per_skater = {}  # dict with {skater: majority score}
+    for skater_ref in victories_matrix:
+        majorities = 0
+        for skater_vs in victories_matrix[skater_ref]:
+            if math.isclose(victories_matrix[skater_ref][skater_vs], majority_threshold):
+                majorities += 0.5
+            elif victories_matrix[skater_ref][skater_vs] > majority_threshold:
+                majorities += 1
+        majorities_per_skater[skater_ref] = majorities
+    print(f"{majorities_per_skater=}")
 
-    ################################################
-    # 4) CALCOLO PIAZZAMENTO (parimeriti possibili #
-    ################################################
-    placement = sorted(majorities, key=lambda d: d['majority'], reverse=True)  # list of {id: majority}
-    print(f"{placement=}")
+    #################
+    # 4) CLASSIFICA #
+    #################
 
-    ########################
-    # VISUALIZZAZIONE VOTI #
-    ########################
+    standings_majorities = sorted(majorities_per_skater.items(), key=lambda x: x[1], reverse=True)
+    print(f"{standings_majorities=}")
+    print("==========> Classifica per voti di maggioranza (step 4):")
+    for pos, skater in zip(range(1, len(standings_majorities) + 1), standings_majorities):
+        tot_rounded = Decimal(df.loc[skater[0]-1, 'TOTALE'])
+        tot_rounded = tot_rounded.quantize(Decimal('1.00'), rounding=ROUND_HALF_UP)
+        print(f"{pos}°) {df.loc[skater[0]-1, 'NOME']} {df.loc[skater[0]-1, 'COGNOME']} "
+              f"(#ingresso: {df.loc[skater[0]-1, entrance_order]}, majorities: {skater[1]}, punteggio: {tot_rounded})")
+    standings_majorities = [skater[0] for skater in standings_majorities]
+    print(f"{standings_majorities=}")
 
-    placement_dict = {placement[p]['id']: p + 1 for p in range(len(placement))}  # dict of {id: placement}
-    print(f"{placement_dict=}")
-    print("==========> SCORES ==========>")
-    print("   | ", end="")
-    for idx in range(len(victories)):
-        print(f"{idx + 1:02d}", end="    | ")
-    print("MAJORITY", "STANDING", sep=" | ")
-    for ref in range(len(victories)):
-        print(f"{ref + 1:02d} | ", end="")
-        for vs in range(len(victories[ref])):
-            print(f"{victories[ref][vs]['victory']: 2.2f}", end=" | ")
-        print(f"{majorities[ref]['majority']: 2.2f}    | {placement_dict[ref + 1]}°")
-    print("<========== SCORES <==========")
+    ########################################################
+    # 5) RISOLUZIONE PARIMERITI IN VITTORIE DI MAGGIORANZA #
+    ########################################################
 
-    #######################################################################
-    # 5) CALCOLO PIAZZAMENTO (parimeriti improbabili ma ancora possibili) #
-    #######################################################################
-    parities = {}  # who has same majority? ({majority: [peers]}) --- peer is idx of placement (sorted) list!
-    separate_victories = {}  # victories against peers (dict {majority: [{peer: victories}, ...]})
-    for idx_ref in range(len(placement)):
-        if placement[idx_ref]['majority'] not in parities:
-            parities[placement[idx_ref]['majority']] = [idx_ref]
-            for idx_other in range(len(placement)):
-                if idx_ref != idx_other and math.isclose(placement[idx_ref]['majority'], placement[idx_other]['majority']):
-                    parities[placement[idx_ref]['majority']].append(idx_other)
-    for maj in parities:
-        if len(parities[maj]) != 1:  # otherwise nobody has same majority of that only guy
-            separate_victories[maj] = []
-            for one in parities[maj]:
-                wins = 0
-                for other in parities[maj]:
-                    if one != other:
-                        wins += victories[placement[one]['id']-1][placement[other]['id']-1]['victory']
-                separate_victories[maj].append(
-                    {
-                        'peer': one,
-                        'wins': wins
-                    }
-                )
-    print(f"{parities=}")
-    print(f"{separate_victories}")
-    for maj in separate_victories:  # for each parity (same majority), order those peers according to vs. wins
-        print(f"{maj=}", end=") ")
-        sub_sep_vic = sorted(separate_victories[maj], key=lambda d: d['wins'], reverse=True)
-        print(f"{sub_sep_vic=}")
+    separate_victories_per_skater = {}  # dict with {skater: (victories, [competitors])}
+    first = -1
+    for skater_ref in majorities_per_skater:
+        victories = 0
+        competitors = []
+        for skater_vs in majorities_per_skater:
+            if skater_ref != skater_vs and math.isclose(majorities_per_skater[skater_ref], majorities_per_skater[skater_vs]):
+                if first == -1:
+                    first = skater_ref
+                victories += victories_matrix[skater_ref][skater_vs]
+                competitors.append(skater_vs)
+        if victories > 0:
+            separate_victories_per_skater[skater_ref] = (victories, competitors)
 
-    # order placement sub-list (of parities) according to this separate victories ordering
-    print("==========> STANDINGS ==========>")
-    skip = []
-    standing = 1
-    for p in placement:
-        if p['majority'] not in separate_victories:
-            print(f"{standing}°) {df.loc[p['id']-1, 'NOME']} {df.loc[p['id']-1, 'COGNOME']} "
-                  f"(#pista: {df.loc[p['id']-1, entrance_order]}, punteggio: {df.loc[p['id'] - 1, 'Totale']})")
-            standing += 1
-        else:
-            if p['majority'] not in skip:
-                skip.append(p['majority'])  # avoid expanding sub_sep_vic moultiple times
-                for e in separate_victories[p['majority']]:
-                    print(
-                        f"{standing}°) {df.loc[placement[e['peer']]['id']-1, 'NOME']} {df.loc[placement[e['peer']]['id']-1, 'COGNOME']} "
-                        f"(#pista: {df.loc[placement[e['peer']]['id']-1, entrance_order]}, punteggio: {df.loc[placement[e['peer']]['id'] - 1, 'Totale']})")
-                    standing += 1
-    print("<========== STANDINGS <==========")
+    if first != -1:
+        print(f"{separate_victories_per_skater=}")
+        standings_peer_majorities = sorted(separate_victories_per_skater.items(), key=lambda x: x[1][0], reverse=True)
+        print(f"{standings_peer_majorities=}")
+        #standings_peer_majorities = [skater[0] for skater in standings_peer_majorities]
+        standings_peer_majorities = [10,11,9]  # force test
+        print(f"{standings_peer_majorities=}")
 
-    ###################################################
-    # 6) CALCOLO PIAZZAMENTO (parimeriti impossibili) #
-    ###################################################
-
-    more_parities = {}  # dict of {majorities: {wins: [peers]}} --- peer is idx of placement (sorted) list!
-    for m in separate_victories:
-        more_parities[m] = {}
-        for idx_ref in range(len(separate_victories[m])):
-            for idx_other in range(len(separate_victories[m])):
-                if idx_ref != idx_other and math.isclose(separate_victories[m][idx_ref]['wins'], separate_victories[m][idx_other]['wins']):
-                    if separate_victories[m][idx_ref]['wins'] not in more_parities[m]:
-                        more_parities[m][separate_victories[m][idx_ref]['wins']] = [separate_victories[m][idx_ref]['peer']]
-                    if separate_victories[m][idx_other]['peer'] not in more_parities[m][separate_victories[m][idx_ref]['wins']]:
-                        more_parities[m][separate_victories[m][idx_ref]['wins']].append(separate_victories[m][idx_other]['peer'])
-    print(f"{more_parities}")
-
-    #########################################
-    # VISUALIZZAZIONE CLASSIFICA DEFINITIVA #
-    #########################################
-
-
+        fix_point = standings_majorities.index(first)
+        for idx in range(len(standings_peer_majorities)):
+            standings_majorities[fix_point + idx] = standings_peer_majorities[idx]
+        print(f"{standings_majorities=}")
+        print("==========> Classifica con parimeriti per voti di maggioranza risolti (step 5):")
+        for pos, skater in zip(range(1, len(standings_majorities) + 1), standings_majorities):
+            tot_rounded = Decimal(df.loc[skater-1, 'TOTALE'])
+            tot_rounded = tot_rounded.quantize(Decimal('1.00'), rounding=ROUND_HALF_UP)
+            print(f"{pos}°) {df.loc[skater-1, 'NOME']} {df.loc[skater-1, 'COGNOME']} "
+                  f"(#ingresso: {df.loc[skater-1, entrance_order]}, majorities: {majorities_per_skater[skater]}, punteggio: {tot_rounded})")
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
