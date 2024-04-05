@@ -1,0 +1,1 @@
+export FLASK_APP=skating_app.py

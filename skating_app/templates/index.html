@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1> {{home_title}}: {{sub_title}} </h1>
+    <h2> Calcolatore punteggio correttivo White </h2>
+    <p> Valido per:
+        <ul>
+            {% for program in programs %}
+                <li>{{ program.name }} </li>
+            {% endfor %}
+        </ul>
+    </p>
+    <hr>
+    <h3> Carica il file Excel (.xlsx) coi punteggi </h3>
+    <form method="POST" action="" enctype="multipart/form-data">
+        <div class="input-group mb-3">
+            <input type="file" class="form-control" id="excel_file" name="file">
+            <!--<label class="input-group-text" for="excel_file"></label>-->
+            <input type="submit" class="input-group-text" value="Carica">
+        </div>
+        <!--<p><input type="file" name="file"></p>
+        <p><input type="submit" value="Carica"></p>-->
+    </form>
+    <h3> Punteggi caricati </h3>
+        {% if table %}
+            {{table|safe}}
+        {% else %}
+            <p> Nessun punteggio caricato </p>
+        {% endif %}
+    <hr>
+    <h3> Calcola classifica </h3>
+        {% if standings %}
+            {{standings|safe}}
+        {% else %}
+            <p> Classifica non ancora calcolata (carica i punteggi prima) </p>
+        {% endif %}
+{% endblock %}
