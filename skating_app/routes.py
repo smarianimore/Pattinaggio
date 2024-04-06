@@ -6,7 +6,7 @@ from flask import render_template, request
 import pandas as pd
 
 
-header_row_idx = 0  # which row contains the header
+header_row_idx = 1  # which row contains the header
 data_columns = "A:N"
 header_score_tech = "DIFFICOLTA"
 header_score_art = "STILE"
@@ -92,7 +92,7 @@ def standings():
         victories_matrix[int(df.loc[skater_ref.Index, entrance_order])] = {}
         print(f"{df.loc[skater_ref.Index, entrance_order]} vs:")
         for skater_vs in df.itertuples():
-            victories = 0
+            victories = 0.0
             if df.loc[skater_ref.Index, entrance_order] != df.loc[
                 skater_vs.Index, entrance_order]:  # NOT comparing skater with herself
                 for idx in range(1, n_judges + 1):
@@ -103,9 +103,9 @@ def standings():
                             victories += 0.5
                         elif df.loc[skater_ref.Index, f'{header_score_art} {idx}'] > df.loc[
                             skater_vs.Index, f'{header_score_art} {idx}']:
-                            victories += 1
+                            victories += 1.0
                     elif df.loc[skater_ref.Index, f'TOTALE {idx}'] > df.loc[skater_vs.Index, f'TOTALE {idx}']:
-                        victories += 1
+                        victories += 1.0
                 victories_matrix[int(df.loc[skater_ref.Index, entrance_order])][
                     int(df.loc[skater_vs.Index, entrance_order])] = victories
                 print(f"\t{df.loc[skater_vs.Index, entrance_order]}: {victories}", end="")
@@ -118,12 +118,12 @@ def standings():
 
     majorities_per_skater = {}  # dict with {skater: majority score}
     for skater_ref in victories_matrix:
-        majorities = 0
+        majorities = 0.0
         for skater_vs in victories_matrix[skater_ref]:
             if math.isclose(victories_matrix[skater_ref][skater_vs], majority_threshold):
                 majorities += 0.5
             elif victories_matrix[skater_ref][skater_vs] > majority_threshold:
-                majorities += 1
+                majorities += 1.0
         majorities_per_skater[skater_ref] = majorities
     print(f"{majorities_per_skater=}")
 
@@ -135,7 +135,7 @@ def standings():
     print(f"{standings_majorities=}")
     print("==========> Classifica per voti di maggioranza (step 4):")
     for pos, skater in zip(range(1, len(standings_majorities) + 1), standings_majorities):
-        tot_rounded = Decimal(df.loc[skater[0] - 1, 'TOTALE'])
+        tot_rounded = Decimal(float(df.loc[skater[0] - 1, 'TOTALE']))
         tot_rounded = tot_rounded.quantize(Decimal('1.00'), rounding=ROUND_HALF_UP)
         print(f"{pos}°) {df.loc[skater[0] - 1, 'NOME']} {df.loc[skater[0] - 1, 'COGNOME']} (#ingresso: {df.loc[skater[0] - 1, entrance_order]}, majorities: {skater[1]}, punteggio: {tot_rounded})")
     standings_majorities = [skater[0] for skater in standings_majorities]
@@ -148,7 +148,7 @@ def standings():
     separate_victories_per_skater = {}  # dict with {skater: (victories, [competitors])}
     first = -1
     for skater_ref in majorities_per_skater:
-        victories = 0
+        victories = 0.0
         competitors = []
         for skater_vs in majorities_per_skater:
             if skater_ref != skater_vs and math.isclose(majorities_per_skater[skater_ref], majorities_per_skater[skater_vs]):
@@ -156,7 +156,7 @@ def standings():
                     first = skater_ref
                 victories += victories_matrix[skater_ref][skater_vs]
                 competitors.append(skater_vs)
-        if victories > 0:
+        if victories > 0.0:
             separate_victories_per_skater[skater_ref] = (victories, competitors)
 
     if first != -1:
@@ -174,7 +174,7 @@ def standings():
         print("==========> Classifica con parimeriti per voti di maggioranza risolti (step 5):")
         standings_to_html = []
         for pos, skater in zip(range(1, len(standings_majorities) + 1), standings_majorities):
-            tot_rounded = Decimal(df.loc[skater - 1, 'TOTALE'])
+            tot_rounded = Decimal(float(df.loc[skater - 1, 'TOTALE']))
             tot_rounded = tot_rounded.quantize(Decimal('1.00'), rounding=ROUND_HALF_UP)
             next_standing = f"{pos}°) {df.loc[skater - 1, 'NOME']} {df.loc[skater - 1, 'COGNOME']} (#ingresso: {df.loc[skater - 1, entrance_order]}, majorities: {majorities_per_skater[skater]}, punteggio: {tot_rounded})"
             standings_to_html.append(next_standing)
