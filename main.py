@@ -121,7 +121,7 @@ if __name__ == '__main__':
         standings_peer_majorities = sorted(separate_victories_per_skater.items(), key=lambda x: x[1][0], reverse=True)
         print(f"{standings_peer_majorities=}")
         #standings_peer_majorities = [skater[0] for skater in standings_peer_majorities]
-        standings_peer_majorities = [10,11,9]  # force test
+        standings_peer_majorities = [10, 11, 9]  # force test
         print(f"{standings_peer_majorities=}")
 
         fix_point = standings_majorities.index(first)

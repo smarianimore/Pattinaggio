@@ -10,9 +10,12 @@
             {% endfor %}
         </ul>
     </p>
+
     <hr>
-    <h3> Carica il file Excel (.xlsx) coi punteggi </h3>
-    <form method="POST" action="" enctype="multipart/form-data">
+
+    <h3> 1) Carica il file Excel (.xlsx) coi punteggi </h3>
+    <p> Il file Excel deve avere un foglio per ogni categoria, così da generare una classifica per ogni categoria </p>
+    <form method="POST" action="/file_upload" enctype="multipart/form-data">
         <div class="input-group mb-3">
             <input type="file" class="form-control" id="excel_file" name="file">
             <!--<label class="input-group-text" for="excel_file"></label>-->
@@ -21,14 +24,31 @@
         <!--<p><input type="file" name="file"></p>
         <p><input type="submit" value="Carica"></p>-->
     </form>
-    <h3> Punteggi caricati </h3>
+
+    <hr>
+
+    <h3> 2) Configura i parametri del foglio di cui generare la classifica </h3>
+        <form method="POST" action="/config_sheet" enctype="multipart/form-data">
+            <div class="input-group mb-3">
+                <span class="input-group-text">Nome del foglio da caricare</span>
+                <input type="text" class="form-control" placeholder="Nome del foglio da caricare" aria-label="Nome del foglio da caricare" name="sheet_name">
+                <span class="input-group-text">Numero atlete/i nel foglio</span>
+                <input type="text" class="form-control" placeholder="Numero atlete/i nel foglio" aria-label="Numero atlete/i nel foglio" name="n_skaters">
+                <input type="submit" class="input-group-text" value="Ok">
+                <!--<button class="btn btn-outline-secondary" type="button" id="config_sheet">Ok</button>-->
+            </div>
+        </form>
+    <hr>
+    <h4> Punteggi caricati </h4>
         {% if table %}
             {{table|safe}}
         {% else %}
             <p> Nessun punteggio caricato </p>
         {% endif %}
+
     <hr>
-    <h3> Calcola classifica </h3>
+
+    <h3> 3) Calcola classifica </h3>
         {% if standings %}
             {{standings|safe}}
         {% else %}
