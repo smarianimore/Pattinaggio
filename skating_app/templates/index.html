@@ -24,6 +24,15 @@
         <!--<p><input type="file" name="file"></p>
         <p><input type="submit" value="Carica"></p>-->
     </form>
+    {% if upload_ok %}
+        <div class="alert alert-success" role="alert">
+          File <strong>{{upload_ok}}</strong> caricato correttamente
+        </div>
+    {% else %}
+        <div class="alert alert-warning" role="alert">
+          Nessun file ancora caricato!
+        </div>
+    {% endif %}
 
     <hr>
 
@@ -43,7 +52,9 @@
         {% if table %}
             {{table|safe}}
         {% else %}
-            <p> Nessun punteggio caricato </p>
+            <div class="alert alert-warning" role="alert">
+              Nessun punteggio ancora disponibile! (configura prima il foglio da cui caricare i punteggi)
+            </div>
         {% endif %}
 
     <hr>
@@ -52,6 +63,8 @@
         {% if standings %}
             {{standings|safe}}
         {% else %}
-            <p> Classifica non ancora calcolata (carica i punteggi prima) </p>
+            <div class="alert alert-warning" role="alert">
+              Classifica non ancora calcolata! (carica i punteggi prima)
+            </div>
         {% endif %}
 {% endblock %}

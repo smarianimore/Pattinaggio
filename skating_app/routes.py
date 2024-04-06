@@ -43,7 +43,8 @@ def upload():
     return render_template('index.html',
                            home_title="Libertas Pattinaggio Forlì",
                            sub_title="Trofeo Primavera 2024",
-                           programs=programs)
+                           programs=programs,
+                           upload_ok=file.filename)
 
 
 @skating_app.post('/config_sheet')
@@ -58,9 +59,10 @@ def config_sheet():
                        decimal=decimal_separator)
 
     # Return HTML snippet that will render the table
-    html_df = df.to_html(classes='table table-stripped')
+    html_df = df.to_html(classes='table table-striped table-bordered table-hover table-sm')
     return render_template('index.html',
                            home_title="Libertas Pattinaggio Forlì",
                            sub_title="Trofeo Primavera 2024",
                            programs=programs,
-                           table=html_df)
+                           table=html_df,
+                           upload_ok=filename)
