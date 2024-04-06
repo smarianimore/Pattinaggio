@@ -59,12 +59,21 @@
 
     <hr>
 
-    <h3> 3) Calcola classifica </h3>
+    <h3> 3) Ottieni la classifica :) </h3>
         {% if standings %}
-            {{standings|safe}}
+            <h4> Classifica </h4>
+                {% for next_standing in standings %}
+                    <p> {{ next_standing }} </p>
+                {% endfor %}
         {% else %}
             <div class="alert alert-warning" role="alert">
               Classifica non ancora calcolata! (carica i punteggi prima)
             </div>
+            <form method="GET" action="/standings">
+                <div class="input-group mb-3">
+                    <input type="submit" class="input-group-text" value="Mostra!">
+                    <!--<button class="btn btn-outline-secondary" type="button" id="config_sheet">Ok</button>-->
+                </div>
+            </form>
         {% endif %}
 {% endblock %}
