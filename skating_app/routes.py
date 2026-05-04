@@ -1,10 +1,17 @@
 import math
+import logging
 from decimal import Decimal, ROUND_HALF_UP
 
 from skating_app import skating_app
 from flask import render_template, request
 import pandas as pd
 
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    handlers=[
+                        logging.FileHandler("skating_app.log"),
+                        logging.StreamHandler()
+                    ])
 
 header_row_idx = 1  # which row contains the header
 data_columns = "A:N"
@@ -36,7 +43,7 @@ df = None
 def index():
     return render_template('index.html',
                            home_title="Libertas Pattinaggio Forlì",
-                           sub_title="Trofeo Primavera 2024",
+                           sub_title="",
                            programs=programs)
 
 
@@ -52,7 +59,7 @@ def upload():
     # Return HTML snippet that will render the table
     return render_template('index.html',
                            home_title="Libertas Pattinaggio Forlì",
-                           sub_title="Trofeo Primavera 2024",
+                           sub_title="",
                            programs=programs,
                            upload_ok=file.filename)
 
@@ -73,7 +80,7 @@ def config_sheet():
     html_df = df.to_html(classes='table table-striped table-bordered table-hover table-sm')
     return render_template('index.html',
                            home_title="Libertas Pattinaggio Forlì",
-                           sub_title="Trofeo Primavera 2024",
+                           sub_title="",
                            programs=programs,
                            table=html_df,
                            upload_ok=filename)
@@ -87,10 +94,10 @@ def standings():
     #########################################
 
     victories_matrix = {}  # dict with {skater: {competitor: victories}}
-    print("==========> Victories matrix:")
+    logging.info("==========> Victories matrix:")
     for skater_ref in df.itertuples():
         victories_matrix[int(df.loc[skater_ref.Index, entrance_order])] = {}
-        print(f"{df.loc[skater_ref.Index, entrance_order]} vs:")
+        logging.info(f"{df.loc[skater_ref.Index, entrance_order]} vs:")
         for skater_vs in df.itertuples():
             victories = 0.0
             if df.loc[skater_ref.Index, entrance_order] != df.loc[
@@ -108,9 +115,9 @@ def standings():
                         victories += 1.0
                 victories_matrix[int(df.loc[skater_ref.Index, entrance_order])][
                     int(df.loc[skater_vs.Index, entrance_order])] = victories
-                print(f"\t{df.loc[skater_vs.Index, entrance_order]}: {victories}", end="")
-        print()
-    # print(json.dumps(victories_matrix, indent=4))
+                logging.info(f"\t{df.loc[skater_vs.Index, entrance_order]}: {victories}")
+        logging.info("")
+    # logging.info(json.dumps(victories_matrix, indent=4))
 
     ######################################
     # 3) CALCOLO VITTORIE DI MAGGIORANZA #
@@ -125,21 +132,24 @@ def standings():
             elif victories_matrix[skater_ref][skater_vs] > majority_threshold:
                 majorities += 1.0
         majorities_per_skater[skater_ref] = majorities
-    print(f"{majorities_per_skater=}")
+    logging.info(f"{majorities_per_skater=}")
 
     #################
     # 4) CLASSIFICA #
     #################
 
     standings_majorities = sorted(majorities_per_skater.items(), key=lambda x: x[1], reverse=True)
-    print(f"{standings_majorities=}")
-    print("==========> Classifica per voti di maggioranza (step 4):")
+    logging.info(f"{standings_majorities=}")
+    logging.info("==========> Classifica per voti di maggioranza (step 4):")
+    standings_to_html = []
     for pos, skater in zip(range(1, len(standings_majorities) + 1), standings_majorities):
         tot_rounded = Decimal(float(df.loc[skater[0] - 1, 'TOTALE']))
         tot_rounded = tot_rounded.quantize(Decimal('1.00'), rounding=ROUND_HALF_UP)
-        print(f"{pos}°) {df.loc[skater[0] - 1, 'NOME']} {df.loc[skater[0] - 1, 'COGNOME']} (#ingresso: {df.loc[skater[0] - 1, entrance_order]}, majorities: {skater[1]}, punteggio: {tot_rounded})")
+        next_standing = f"{pos}°) {df.loc[skater[0] - 1, 'NOME']} {df.loc[skater[0] - 1, 'COGNOME']} (#ingresso: {df.loc[skater[0] - 1, entrance_order]}, majorities: {skater[1]}, punteggio: {tot_rounded})"
+        standings_to_html.append(next_standing)
+        logging.info(next_standing)
     standings_majorities = [skater[0] for skater in standings_majorities]
-    print(f"{standings_majorities=}")
+    logging.info(f"{standings_majorities=}")
 
     ########################################################
     # 5) RISOLUZIONE PARIMERITI IN VITTORIE DI MAGGIORANZA #
@@ -160,30 +170,36 @@ def standings():
             separate_victories_per_skater[skater_ref] = (victories, competitors)
 
     if first != -1:
-        print(f"{separate_victories_per_skater=}")
+        logging.info(f"{separate_victories_per_skater=}")
         standings_peer_majorities = sorted(separate_victories_per_skater.items(), key=lambda x: x[1][0], reverse=True)
-        print(f"{standings_peer_majorities=}")
+        logging.info(f"{standings_peer_majorities=}")
         standings_peer_majorities = [skater[0] for skater in standings_peer_majorities]
         #standings_peer_majorities = [10, 11, 9]  # force test
-        print(f"{standings_peer_majorities=}")
+        logging.info(f"{standings_peer_majorities=}")
 
         fix_point = standings_majorities.index(first)
         for idx in range(len(standings_peer_majorities)):
             standings_majorities[fix_point + idx] = standings_peer_majorities[idx]
-        print(f"{standings_majorities=}")
-        print("==========> Classifica con parimeriti per voti di maggioranza risolti (step 5):")
+        logging.info(f"{standings_majorities=}")
+        logging.info("==========> Classifica con parimeriti per voti di maggioranza risolti (step 5):")
         standings_to_html = []
         for pos, skater in zip(range(1, len(standings_majorities) + 1), standings_majorities):
             tot_rounded = Decimal(float(df.loc[skater - 1, 'TOTALE']))
             tot_rounded = tot_rounded.quantize(Decimal('1.00'), rounding=ROUND_HALF_UP)
             next_standing = f"{pos}°) {df.loc[skater - 1, 'NOME']} {df.loc[skater - 1, 'COGNOME']} (#ingresso: {df.loc[skater - 1, entrance_order]}, majorities: {majorities_per_skater[skater]}, punteggio: {tot_rounded})"
             standings_to_html.append(next_standing)
-            print(next_standing)
+            logging.info(next_standing)
+
+    # Convert standings_to_html to an HTML table
+    standings_html_table = '<table class="table table-striped table-bordered table-hover table-sm"><thead><tr><th>Position</th><th>Name</th><th>Surname</th><th>Entrance Order</th><th>Majorities</th><th>Score</th></tr></thead><tbody>'
+    for standing in standings_to_html:
+        standings_html_table += f'<tr><td>{standing}</td></tr>'
+    standings_html_table += '</tbody></table>'
 
     html_df = df.to_html(classes='table table-striped table-bordered table-hover table-sm')
     return render_template('index.html',
                            home_title="Libertas Pattinaggio Forlì",
-                           sub_title="Trofeo Primavera 2024",
+                           sub_title="",
                            programs=programs,
                            table=html_df,
                            upload_ok=filename,

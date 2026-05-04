@@ -14,14 +14,14 @@ pd.set_option('display.max_columns', None)
 # CONFIGURAZIONE FOGLIO DATI E NUMERO ATLETE #
 ##############################################
 
-excel_file_path = "/mnt/c/Users/stefa/OneDrive/Documents/2024-trofeo-primavera.xlsx"
-sheet_name = "AZZURRI START (M)"  # "promo B femminile"
+excel_file_path = "/mnt/c/Users/stefa/OneDrive/Documents/2024-bologna.xlsx"
+sheet_name = "Foglio1"
 header_row_idx = 1  # which row contains the header
 data_columns = "A:N"
 header_score_tech = "DIFFICOLTA"
 header_score_art = "STILE"
 entrance_order = "INGRESSO"
-n_skaters = 11
+n_skaters = 22
 decimal_separator = ','
 
 n_judges = 3
